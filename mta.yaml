@@ -1,0 +1,92 @@
+_schema-version: "3.2"
+ID: zapplication
+version: 0.0.1
+modules:
+- name: zapplication-destination-content
+  type: com.sap.application.content
+  requires:
+  - name: zapplication-destination-service
+    parameters:
+      content-target: true
+  - name: zapplication_html_repo_host
+    parameters:
+      service-key:
+        name: zapplication_html_repo_host-key
+  - name: uaa_zapplication
+    parameters:
+      service-key:
+        name: uaa_zapplication-key
+  parameters:
+    content:
+      instance:
+        destinations:
+        - Name: zapplication_zapplication_html_repo_host
+          ServiceInstanceName: zapplication-html5-app-host-service
+          ServiceKeyName: zapplication_html_repo_host-key
+          sap.cloud.service: zapplication
+        - Authentication: OAuth2UserTokenExchange
+          Name: zapplication_uaa_zapplication
+          ServiceInstanceName: zapplication-xsuaa-service
+          ServiceKeyName: uaa_zapplication-key
+          sap.cloud.service: zapplication
+        existing_destinations_policy: ignore
+  build-parameters:
+    no-source: true
+- name: zapplication-app-content
+  type: com.sap.application.content
+  path: .
+  requires:
+  - name: zapplication_html_repo_host
+    parameters:
+      content-target: true
+  build-parameters:
+    build-result: resources
+    requires:
+    - artifacts:
+      - comappzapplicationui.zip
+      name: comappzapplicationui
+      target-path: resources/
+- name: comappzapplicationui
+  type: html5
+  path: zapplicationui
+  build-parameters:
+    build-result: dist
+    builder: custom
+    commands:
+    - npm install
+    - npm run build:cf
+    supported-platforms: []
+resources:
+- name: zapplication-destination-service
+  type: org.cloudfoundry.managed-service
+  parameters:
+    config:
+      HTML5Runtime_enabled: true
+      init_data:
+        instance:
+          destinations:
+          - Authentication: NoAuthentication
+            Name: ui5
+            ProxyType: Internet
+            Type: HTTP
+            URL: https://ui5.sap.com
+          existing_destinations_policy: update
+      version: 1.0.0
+    service: destination
+    service-name: zapplication-destination-service
+    service-plan: lite
+- name: zapplication_html_repo_host
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: html5-apps-repo
+    service-name: zapplication-html5-app-host-service
+    service-plan: app-host
+- name: uaa_zapplication
+  type: org.cloudfoundry.managed-service
+  parameters:
+    path: ./xs-security.json
+    service: xsuaa
+    service-name: zapplication-xsuaa-service
+    service-plan: application
+parameters:
+  deploy_mode: html5-repo
